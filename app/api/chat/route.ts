@@ -378,6 +378,7 @@ Remember:
         role: 'user',
         content: `${contextForLLM}\n\nUse the above information to answer the following question:\n${currentMessage}`
       }],
+      temperature: 0
     });
     
     // Return the DataStream as a response
