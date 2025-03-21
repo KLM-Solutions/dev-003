@@ -48,7 +48,7 @@ async function rewriteQuery(query: string, chatHistory: Message[]) {
     model: openai('gpt-4o-2024-11-20'),
     system: `You are bent's woodworks assistant so question will be related to wood shop. 
     Rewrites user query to make them more specific and searchable, taking into account 
-    the chat history if provided. Only return the rewritten query without any explanations.`,
+    the chat history if provided. Only return the rewritten query without any explanations and make the question to be search like more depth.`,
     messages: [{
       role: 'user',
       content: `Original query: ${query}
@@ -249,6 +249,62 @@ function extractTimestamps(text: string, videoUrl: string): Array<{time: string,
   return timestamps;
 }
 
+// Create a proper type for the timestamp object
+interface TimestampReference {
+  videoTitle: string;
+  time: string;
+  text: string;
+  url: string;
+}
+
+// Create a type for the timestamp map
+interface TimestampMap {
+  [time: string]: {
+    url: string;
+    text: string;
+    videoTitle: string;
+  };
+}
+
+// Add the type definition to the function
+function formatHyperlinkedTimestamps(searchResults: any[]): { map: TimestampMap; examples: string } {
+  // First, extract all timestamps from all videos with their URLs
+  const allTimestamps: TimestampReference[] = [];
+  
+  searchResults.forEach(result => {
+    const videoUrl = result.url;
+    const videoTitle = result.title;
+    
+    const timestamps = extractTimestamps(result.text, videoUrl);
+    
+    timestamps.forEach(ts => {
+      allTimestamps.push({
+        videoTitle: videoTitle,
+        time: ts.time,
+        text: ts.text,
+        url: ts.url
+      });
+    });
+  });
+  
+  // Create a lookup map for easy reference
+  const timestampMap: TimestampMap = {};
+  
+  allTimestamps.forEach(ts => {
+    timestampMap[ts.time] = {
+      url: ts.url,
+      text: ts.text,
+      videoTitle: ts.videoTitle
+    };
+  });
+  
+  // Return the map for easy lookup in the LLM prompt
+  return {
+    map: timestampMap,
+    examples: allTimestamps.map(ts => `[[${ts.time}]](${ts.url}) - ${ts.text} (from ${ts.videoTitle})`).join('\n')
+  };
+}
+
 // Modified POST handler
 export async function POST(req: Request) {
   try {
@@ -301,6 +357,8 @@ export async function POST(req: Request) {
     
     // Step 2: Rewrite query for better search
     const rewrittenQuery = await rewriteQuery(currentMessage, chatHistory);
+    console.log("Original query:", currentMessage);
+    console.log("Rewritten query:", rewrittenQuery);
 
     // Step 3: Generate embedding for the rewritten query
     const embedding = await generateEmbedding(rewrittenQuery || currentMessage);
@@ -312,28 +370,46 @@ export async function POST(req: Request) {
     const videoIds = searchResults
       .map(result => result.id)
       .filter((id, index, self) => self.indexOf(id) === index);
+    console.log("Retrieved Video IDs:", videoIds);
     
     // Step 6: Fetch related products using the video IDs (without images)
     const relatedProducts = await fetchProductsByVideoIds(videoIds);
     
-    // Step 7: Format transcript content and product headings for the LLM
+    // Step 7: Format transcript content for the LLM
     const transcriptsForLLM = formatTranscriptForLLM(searchResults);
+    
+    // Step 8: Create hyperlinked timestamps for use in the response
+    const hyperlinkedTimestamps = formatHyperlinkedTimestamps(searchResults);
+    console.log("Hyperlinked Timestamps Map:", Object.keys(hyperlinkedTimestamps.map).length, "timestamps found");
+    
+    // Format product headings
     const productHeadingsForLLM = formatProductHeadingsForLLM(relatedProducts);
     
-    // Combine transcript content and product headings for the LLM
+    // Log data for debugging
+    console.log("Transcript Count:", searchResults.length);
+    console.log("Product Count:", relatedProducts.length);
+    
+    // Combine all content for the LLM with the two-part structure (no Related Videos section)
     const contextForLLM = `
+IMPORTANT TRANSCRIPT INFORMATION - Use this to create your detailed answer:
 ${transcriptsForLLM}
 
-# After you answer the user's question, please include the following product links section exactly as written:
+IMPORTANT: When writing your response, include hyperlinked timestamps using this format: [[MM:SS]](link_url)
+For example, you can refer to specific moments in videos like this:
+${hyperlinkedTimestamps.examples.split('\n').slice(0, 3).join('\n')}
 
+Here are all the available timestamps you can use in your response:
+${hyperlinkedTimestamps.examples}
+
+When discussing specific features, demonstrations, or technical details, include these hyperlinked timestamps in your paragraphs. These make it easy for users to click and navigate to the exact moment in the video where the information is shown.
+
+After you've written your main answer with hyperlinked timestamps included, include this "Related Products" section exactly as written:
 ${productHeadingsForLLM}
+
+Your final response should have this structure:
+1. Your detailed answer to the user's question (with hyperlinked timestamps included in your explanations)
+2. The Related Products section (exactly as provided)
     `.trim();
-    
-    console.log("Product Headings:", productHeadingsForLLM);
-    
-    // Prepare video data for frontend
-    const videoData = formatVideoData(searchResults);
-    console.log("Video Data:", videoData);
     
     // System configuration
     const JASON_BENT_SYSTEM_CONFIG = {
@@ -348,29 +424,33 @@ ${productHeadingsForLLM}
 7. If information isn't available in the provided context, clearly state that.
 8. Always respond in English, regardless of the input language.
 9. Avoid using phrases like "in the video" or "the transcript shows" - instead, speak directly about the techniques and concepts.
-10. At the end of your answer, include the Related Products section with hyperlinks EXACTLY as provided.
+10. Include hyperlinked timestamps in your explanations using the [[MM:SS]](url) format.
+11. After your main answer, you MUST include the "Related Products" section EXACTLY as provided.
 
 Response Structure and Formatting:
    - Use markdown formatting with clear hierarchical structure
-   - Format section headers as: ### **Title Here**
+   - Each major section must start with '### ' followed by a number and bold title
+   - Format section headers as: ### 1. **Title Here**
    - Use bullet points (-) for detailed explanations under each section
    - Each bullet point must contain 2-3 sentences minimum with examples
+   - Include hyperlinked timestamps [[MM:SS]](url) when discussing specific details demonstrated in the videos
    - Add blank lines between major sections only
    - Indent bullet points with proper spacing
    - Do NOT use bold formatting (**) or line breaks within bullet point content
    - Bold formatting should ONLY be used in section headers
    - Keep all content within a bullet point on the same line
    - Any asterisks (*) in the content should be treated as literal characters, not formatting
-   - Include the "Related Products" section at the end EXACTLY as provided
+   - Include the "Related Products" section EXACTLY as provided
 
 Remember:
-- You are speaking as Jason Bent's AI assistant and so if you are mentioning Jason Bent, you should use the word "Jason Bent" instead of "I" like "Jason Bent will suggest that you..."
+- You are speaking as Jason Bent's AI assistant and so if you are mentioning jason bent, you should use the word "Jason Bent" instead of "I" like "Jason Bent will suggest that you..."
 - Focus on analyzing the transcripts and explaining the concepts naturally rather than quoting transcripts
 - Keep responses clear, practical, and focused on woodworking expertise
-- DO NOT mention videos or explain the product links - simply include them as provided at the end of your response`
+- Include hyperlinked timestamps [[MM:SS]](url) in your explanations to reference specific moments from the videos
+- The final structure must be: 1) Your answer with hyperlinked timestamps 2) Related Products section`
     };
     
-    // Step 8: Create response stream with transcript and product headings
+    // Step 8: Create response stream with all components
     const response = await streamText({
       model: openai('gpt-4o-2024-11-20'),
       system: JASON_BENT_SYSTEM_CONFIG.content,
