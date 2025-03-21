@@ -1,6 +1,6 @@
 // app/api/chat/route.ts
 import { openai } from '@ai-sdk/openai';
-import { streamText,smoothStream, createDataStreamResponse, } from 'ai';
+import { streamText, smoothStream, createDataStreamResponse } from 'ai';
 import { Pool } from 'pg';
 import { NextResponse } from 'next/server';
 import { OpenAI } from 'openai';
@@ -8,7 +8,6 @@ import { Message } from 'ai';
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
-
 
 // Initialize OpenAI client
 const openaiClient = new OpenAI({
@@ -75,34 +74,20 @@ async function generateEmbedding(text: string) {
   return response.data[0].embedding;
 }
 
-// Modified vectorSearch function to fetch more results
-async function vectorSearch(embedding: number[], limit: number = 10) { // Increased limit
+async function vectorSearch(embedding: number[], limit: number = 5) {
   const tableName = 'bents_transcripts';
   const query = `
-    WITH vector_results AS (
-      SELECT 
-        id, 
-        text, 
-        title, 
-        url, 
-        chunk_id,
-        1 - (vector <=> $1::vector) as similarity_score
-      FROM ${tableName}
-      WHERE vector IS NOT NULL
-      ORDER BY vector <=> $1::vector
-      LIMIT $2
-    )
     SELECT 
-      vr.*,
-      p.title as product_title,
-      p.tags,
-      p.link as product_link,
-      p.image_data,
-      p.image_link,
-      p.id as product_id
-    FROM vector_results vr
-    LEFT JOIN products p ON p.video_id LIKE '%' || vr.id || '%'
-    ORDER BY vr.similarity_score DESC;
+      id, 
+      text, 
+      title, 
+      url, 
+      chunk_id,
+      1 - (vector <=> $1::vector) as similarity_score
+    FROM ${tableName}
+    WHERE vector IS NOT NULL
+    ORDER BY vector <=> $1::vector
+    LIMIT $2;
   `;
   
   const result = await pool.query(query, [JSON.stringify(embedding), limit]);
@@ -113,23 +98,13 @@ async function vectorSearch(embedding: number[], limit: number = 10) { // Increa
     title: row.title,
     url: row.url,
     chunk_id: row.chunk_id,
-    similarity_score: row.similarity_score,
-    product_info: {
-      product_title: row.product_title,
-      tags: row.tags,
-      product_link: row.product_link,
-      image_data: row.image_data,
-      image_link: row.image_link,
-      product_id: row.product_id
-    }
+    similarity_score: row.similarity_score
   }));
 }
 
-// Enhanced function to fetch additional related products
-async function fetchRelatedProducts(videoIds: string[]) {
+async function fetchProductsByVideoIds(videoIds: string[]) {
   if (!videoIds.length) return [];
   
-  // Create an OR condition for each video ID
   const videoIdConditions = videoIds.map(id => `video_id LIKE '%${id}%'`).join(' OR ');
   
   const query = `
@@ -137,8 +112,6 @@ async function fetchRelatedProducts(videoIds: string[]) {
       title as product_title,
       tags,
       link as product_link,
-      image_data,
-      image_link,
       id as product_id,
       video_id
     FROM products
@@ -152,8 +125,6 @@ async function fetchRelatedProducts(videoIds: string[]) {
       product_title: row.product_title,
       tags: row.tags,
       product_link: row.product_link,
-      image_data: row.image_data,
-      image_link: row.image_link,
       product_id: row.product_id,
       video_id: row.video_id
     }));
@@ -163,10 +134,9 @@ async function fetchRelatedProducts(videoIds: string[]) {
   }
 }
 
-// Modified formatSearchResults function to include all related data
-const formatSearchResults = (searchResults: any, additionalProducts: any[] = []) => {
-  // Main content for response
-  const mainContent = searchResults.map((result: any) => `
+// Format transcript content for the LLM
+const formatTranscriptForLLM = (searchResults: any[]) => {
+  return searchResults.map((result: any) => `
 Content: ${result.text}
 Title: ${result.title}
 URL: ${result.url}
@@ -174,11 +144,29 @@ Chunk ID: ${result.chunk_id}
 Similarity: ${result.similarity_score.toFixed(4)}
 ---
   `.trim()).join('\n\n');
+};
 
-  // Process videos and extract timestamps
-  const videoContent = searchResults
+// Format product headings for the LLM
+const formatProductHeadingsForLLM = (products: any[]) => {
+  if (!products.length) return "No related products found.";
+  
+  // Create a list of product headings with markdown hyperlinks
+  const productLinks = products
+    .filter(product => product.product_title && product.product_link)
+    .map(product => `- [${product.product_title.trim()}](${product.product_link})`)
+    .join('\n');
+  
+  return `
+### **Related Products**
+
+${productLinks}
+  `.trim();
+};
+
+// Function to format video data for frontend (timestamp extraction)
+const formatVideoData = (searchResults: any[]) => {
+  return searchResults
     .map((result: any) => {
-      // Extract timestamps with text
       const extractedTimestamps = extractTimestamps(result.text, result.url);
       
       return {
@@ -192,64 +180,8 @@ Similarity: ${result.similarity_score.toFixed(4)}
     .filter((video: any, index: number, self: any) => 
       index === self.findIndex((v: any) => v.url === video.url)
     );
-
-  // Combine products from search results with additional products
-  const allProductsRaw = [
-    ...searchResults
-      .filter((result: any) => result.product_info && result.product_info.product_link)
-      .map((result: any) => ({
-        videoId: result.id,
-        productInfo: result.product_info
-      })),
-    ...additionalProducts.map(product => ({
-      videoId: product.video_id,
-      productInfo: product
-    }))
-  ];
-  
-  // Remove duplicates by product_id
-  const productContent = allProductsRaw
-    .filter((product: any, index: number, self: any) => 
-      index === self.findIndex((p: any) => 
-        p.productInfo.product_id === product.productInfo.product_id
-      )
-    );
-
-  // Format timestamps with hyperlinks
-  const videoSection = videoContent.length > 0 
-    ? '\n\nRelated Videos:\n' + videoContent.map((content: any) => {
-        const timestampSection = content.timestamps.length > 0 
-          ? `\nTimestamps:\n${content.timestamps.map((t: any) => 
-              `- [${t.time}](${t.url}): ${t.text}`
-            ).join('\n')}`
-          : '';
-
-        return `
-- ${content.title}
-  Watch Video: [View Full Video](${content.url})${timestampSection}
-        `.trim();
-      }).join('\n\n')
-    : '';
-
-  // Format products with hyperlinks
-  const productSection = productContent.length > 0 
-    ? '\n\nRelated Products:\n' + productContent.map((content: any) => {
-        const productInfo = content.productInfo;
-        const tags = productInfo.tags ? `Tags: ${productInfo.tags}` : '';
-        
-        return `
-- ${productInfo.product_title}
-  [View Product](${productInfo.product_link})
-  ${tags}
-        `.trim();
-      }).join('\n\n')
-    : '';
-
-  // Combine all sections
-  return `${mainContent}${videoSection}${productSection}`;
 };
 
-// Add new helper functions for timestamp handling
 function timeToSeconds(timestamp: string): number {
   const parts = timestamp.split(':').map(Number);
   if (parts.length === 2) {
@@ -258,7 +190,6 @@ function timeToSeconds(timestamp: string): number {
   return parts[0] * 3600 + parts[1] * 60 + parts[2];
 }
 
-// Fixed createTimestampUrl function that properly handles YouTube URLs
 function createTimestampUrl(videoUrl: string, timestamp: string): string {
   const seconds = timeToSeconds(timestamp);
   
@@ -298,7 +229,6 @@ function createTimestampUrl(videoUrl: string, timestamp: string): string {
   return `${videoUrl}#t=${seconds}`;
 }
 
-// Enhanced timestamp extraction function
 function extractTimestamps(text: string, videoUrl: string): Array<{time: string, text: string, url: string}> {
   const timestamps: Array<{time: string, text: string, url: string}> = [];
   const regex = /\[(\d{2}:\d{2})\](.*?)(?=\[\d{2}:\d{2}\]|$)/g;
@@ -319,7 +249,7 @@ function extractTimestamps(text: string, videoUrl: string): Array<{time: string,
   return timestamps;
 }
 
-// Updated POST handler with additional product fetching
+// Modified POST handler
 export async function POST(req: Request) {
   try {
     const { messages } = await req.json();
@@ -329,7 +259,7 @@ export async function POST(req: Request) {
     // Step 1: Check relevance
     const relevance = await checkRelevance(currentMessage, chatHistory);
     
-    // Handle different relevance types (no changes to this part)
+    // Handle different relevance types
     if (relevance === 'GREETING') {
       return streamText({
         model: openai('gpt-4o-2024-11-20'),
@@ -375,21 +305,37 @@ export async function POST(req: Request) {
     // Step 3: Generate embedding for the rewritten query
     const embedding = await generateEmbedding(rewrittenQuery || currentMessage);
 
-    // Step 4: Search vector database
-    const searchResults = await vectorSearch(embedding, 10); // Increased limit
+    // Step 4: Search vector database for top 5 results
+    const searchResults = await vectorSearch(embedding, 5);
     
-    // Step 5: Extract video IDs for additional product search
+    // Step 5: Extract video IDs from transcripts
     const videoIds = searchResults
       .map(result => result.id)
       .filter((id, index, self) => self.indexOf(id) === index);
     
-    // Step 6: Fetch additional related products
-    const additionalProducts = await fetchRelatedProducts(videoIds);
+    // Step 6: Fetch related products using the video IDs (without images)
+    const relatedProducts = await fetchProductsByVideoIds(videoIds);
     
-    // Step 7: Format context with all timestamps and product links
-    const context = formatSearchResults(searchResults, additionalProducts);
+    // Step 7: Format transcript content and product headings for the LLM
+    const transcriptsForLLM = formatTranscriptForLLM(searchResults);
+    const productHeadingsForLLM = formatProductHeadingsForLLM(relatedProducts);
     
-    // Update system configuration with explicit instructions
+    // Combine transcript content and product headings for the LLM
+    const contextForLLM = `
+${transcriptsForLLM}
+
+# After you answer the user's question, please include the following product links section exactly as written:
+
+${productHeadingsForLLM}
+    `.trim();
+    
+    console.log("Product Headings:", productHeadingsForLLM);
+    
+    // Prepare video data for frontend
+    const videoData = formatVideoData(searchResults);
+    console.log("Video Data:", videoData);
+    
+    // System configuration
     const JASON_BENT_SYSTEM_CONFIG = {
       role: 'system',
       content: `You are an AI assistant representing Jason Bent's woodworking expertise. Your role is to:
@@ -402,13 +348,11 @@ export async function POST(req: Request) {
 7. If information isn't available in the provided context, clearly state that.
 8. Always respond in English, regardless of the input language.
 9. Avoid using phrases like "in the video" or "the transcript shows" - instead, speak directly about the techniques and concepts.
-
-IMPORTANT INSTRUCTION: You MUST display ALL videos and products that are provided in your response.
+10. At the end of your answer, include the Related Products section with hyperlinks EXACTLY as provided.
 
 Response Structure and Formatting:
    - Use markdown formatting with clear hierarchical structure
-   - Each major section must start with '### ' followed by a number and bold title
-   - Format section headers as: ### 1. **Title Here**
+   - Format section headers as: ### **Title Here**
    - Use bullet points (-) for detailed explanations under each section
    - Each bullet point must contain 2-3 sentences minimum with examples
    - Add blank lines between major sections only
@@ -417,29 +361,27 @@ Response Structure and Formatting:
    - Bold formatting should ONLY be used in section headers
    - Keep all content within a bullet point on the same line
    - Any asterisks (*) in the content should be treated as literal characters, not formatting
+   - Include the "Related Products" section at the end EXACTLY as provided
 
 Remember:
 - You are speaking as Jason Bent's AI assistant and so if you are mentioning Jason Bent, you should use the word "Jason Bent" instead of "I" like "Jason Bent will suggest that you..."
 - Focus on analyzing the transcripts and explaining the concepts naturally rather than quoting transcripts
 - Keep responses clear, practical, and focused on woodworking expertise
-- You MUST include and display ALL videos and ALL products in your response, even if they seem only tangentially related
-
-Your response MUST have these sections in this order:
-1. Main answer to the user's question
-2. ALL related videos with their timestamps 
-3. ALL related products with their links`
+- DO NOT mention videos or explain the product links - simply include them as provided at the end of your response`
     };
     
-    // Step 8: Pass everything to the LLM for final response
-    return streamText({
+    // Step 8: Create response stream with transcript and product headings
+    const response = await streamText({
       model: openai('gpt-4o-2024-11-20'),
       system: JASON_BENT_SYSTEM_CONFIG.content,
       messages: [...chatHistory, {
         role: 'user',
-        content: `${context}\n\nUse the following information to answer the below question. Make sure to include ALL videos and products in your response:\n${currentMessage}`
+        content: `${contextForLLM}\n\nUse the above information to answer the following question:\n${currentMessage}`
       }],
-      maxTokens: 6000,
-    }).toDataStreamResponse();
+    });
+    
+    // Return the DataStream as a response
+    return response.toDataStreamResponse();
 
   } catch (error) {
     console.error('Error in chat API:', error);
