@@ -2,60 +2,67 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ShoppingBag, MessageCircle } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import Image from 'next/image';
 
 const Header = () => {
   const pathname = usePathname();
+  
+  const navLinkClasses = "text-gray-700 hover:text-blue-600 font-medium";
+  const activeNavLinkClasses = "text-blue-600 font-medium";
 
   return (
-    <header className="fixed top-0 left-0 right-0 bg-black z-50">
+    <header className="fixed top-0 left-0 right-0 bg-white shadow-sm z-50">
       <div className="w-full px-4 sm:px-12">
-        <div className="flex items-center justify-between h-20">
-          <div className="flex items-center gap-4">
-            <div>
-              <button 
-                onClick={() => {}} 
-                className="bg-[rgba(23,155,215,255)] text-white px-4 py-2 rounded-md hover:bg-[rgba(20,139,193,255)]"
-              >
-                Sign In
-              </button>
-            </div>
-
+        <div className="flex items-center justify-between h-16">
+          <div>
             <Link href="/">
               <Image
                 src="/bents-logo.jpg"
                 alt="Bent's Woodworking"
-                width={150}
-                height={50}
+                width={40}
+                height={40}
                 priority
-                className="h-12 w-auto"
+                className="h-10 w-auto"
               />
             </Link>
           </div>
 
-          <div className="flex items-center space-x-3 sm:space-x-6">
+          <nav className="hidden md:flex items-center space-x-8">
             <Link 
-              href="/chat" 
+              href="/" 
               className={cn(
-                "text-white hover:text-[rgba(23,155,215,255)]",
-                pathname === '/chat' && "text-[rgba(23,155,215,255)]"
+                navLinkClasses,
+                pathname === '/' && activeNavLinkClasses
               )}
             >
-              <MessageCircle className="w-7 h-7 sm:w-6 sm:h-6" />
+              HOME
             </Link>
-
             <Link 
-              href="/shop" 
+              href="/about" 
               className={cn(
-                "text-white hover:text-[rgba(23,155,215,255)]",
-                pathname === '/shop' && "text-[rgba(23,155,215,255)]"
+                navLinkClasses,
+                pathname === '/about' && activeNavLinkClasses
               )}
             >
-              <ShoppingBag className="w-7 h-7 sm:w-6 sm:h-6" />
+              ABOUT
             </Link>
-          </div>
+            <Link 
+              href="/contact" 
+              className={cn(
+                navLinkClasses,
+                pathname === '/contact' && activeNavLinkClasses
+              )}
+            >
+              CONTACT
+            </Link>
+            <Link 
+              href="/get-started" 
+              className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors"
+            >
+              GET STARTED
+            </Link>
+          </nav>
         </div>
       </div>
     </header>
