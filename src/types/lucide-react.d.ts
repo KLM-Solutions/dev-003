@@ -14,4 +14,13 @@ declare module 'lucide-react' {
   export const LayoutDashboard: Icon;
   export const ShoppingBag: Icon;
   export const MessageCircle: Icon;
+  export const Send: Icon;
+  export const Loader2: Icon;
+  export const Search: Icon;
+  export const Brain: Icon;
+  export const Cpu: Icon;
+  export const ExternalLink: Icon;
+  export const Check: Icon;
+  export const ChevronDown: Icon;
+  export const ChevronUp: Icon;
 }
