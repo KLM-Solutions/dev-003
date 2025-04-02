@@ -33,7 +33,7 @@ const Section1 = () => {
   return (
     <div className="pt-16">
       {/* Hero Section */}
-      <section className="bg-[#f8f0ff] py-16">
+      <section id="home" className="bg-[#f8f0ff] py-16">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row items-center">
             <div className="md:w-1/2 mb-8 md:mb-0">
@@ -90,7 +90,7 @@ const Section1 = () => {
       </section>
 
       {/* About Section */}
-      <section className="py-16">
+      <section id="about" className="py-16">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row items-center">
             <div className="md:w-1/2 md:pr-8 mb-8 md:mb-0">
@@ -119,7 +119,7 @@ const Section1 = () => {
       </section>
 
       {/* Contact Form Section */}
-      <section className="bg-[#f8f0ff] py-16">
+      <section id="contact" className="bg-[#f8f0ff] py-16">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row">
             <div className="md:w-1/2 mb-8 md:mb-0">
