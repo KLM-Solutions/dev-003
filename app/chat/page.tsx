@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Send, Loader2, Search, ExternalLink } from 'lucide-react';
 import MicIcon from '@/app/components/icons/MicIcon';
 import ClipboardIcon from '@/app/components/icons/ClipboardIcon';
@@ -19,12 +19,17 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInput(e.target.value);
   };
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!input.trim()) return;
     
     const userMessage: Message = {
@@ -77,6 +82,10 @@ export default function ChatPage() {
     handleSendMessage();
   };
 
+  if (!mounted) {
+    return null;
+  }
+
   return (
     <div className="flex h-screen bg-white">
       {/* Sidebar */}
@@ -91,7 +100,7 @@ export default function ChatPage() {
           ) : (
             <div className="space-y-6">
               {messages.map((message, index) => (
-                <div key={index} className="max-w-3xl mx-auto">
+                <div key={message.id} className="max-w-3xl mx-auto">
                   {message.role === 'user' ? (
                     <div className="flex items-start mb-4">
                       <div className="flex-shrink-0 mr-4">
@@ -102,7 +111,10 @@ export default function ChatPage() {
                       <div className="flex-1">
                         <p className="text-gray-800 whitespace-pre-wrap">{message.content}</p>
                         <div className="flex space-x-2 mt-1">
-                          <button className="text-gray-400 hover:text-gray-600">
+                          <button 
+                            className="text-gray-400 hover:text-gray-600"
+                            onClick={() => navigator.clipboard.writeText(message.content)}
+                          >
                             <ClipboardIcon size={14} />
                           </button>
                         </div>
@@ -126,7 +138,10 @@ export default function ChatPage() {
                           </ReactMarkdown>
                         </div>
                         <div className="flex space-x-2 mt-2">
-                          <button className="p-1 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100">
+                          <button 
+                            className="p-1 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100"
+                            onClick={() => navigator.clipboard.writeText(message.content)}
+                          >
                             <ClipboardIcon size={16} />
                           </button>
                           <button className="p-1 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100">
@@ -176,10 +191,9 @@ export default function ChatPage() {
                   <Search size={18} />
                 </button>
                 <button
-                  type="button"
-                  disabled={isLoading}
-                  className="p-2 text-blue-500 hover:text-blue-700"
-                  onClick={handleSendMessage}
+                  type="submit"
+                  disabled={isLoading || !input.trim()}
+                  className={`p-2 ${input.trim() ? 'text-blue-500 hover:text-blue-700' : 'text-gray-300'}`}
                 >
                   {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
                 </button>
