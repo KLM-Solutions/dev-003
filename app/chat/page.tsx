@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useEffect, useRef, useCallback, useState, FormEvent } from 'react';
+import React, { useEffect, useRef, useState, FormEvent } from 'react';
 import { useChat } from '@ai-sdk/react';
-import { Send, Loader2, Search, Brain, Cpu } from 'lucide-react';
+import { Send, Loader2, Mic as MicIcon, Search, ExternalLink, Clipboard } from 'lucide-react';
 import ReactMarkdown, { Components } from 'react-markdown';
+import Sidebar from '../components/Sidebar';
+import ChatWelcome from '../components/ChatWelcome';
 
 export default function QuestionAnswerChat() {
   const { messages, handleSubmit, input, handleInputChange, isLoading } = useChat({
@@ -41,16 +43,6 @@ export default function QuestionAnswerChat() {
     }
   }, [isLoading]);
 
-  const scrollToBottom = useCallback(() => {
-    if (messageContainerRef.current) {
-      const container = messageContainerRef.current;
-      const isScrolledNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
-      if (isScrolledNearBottom) {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-      }
-    }
-  }, []);
-
   useEffect(() => {
     if (messages.length && messages.length !== lastMessageLengthRef.current) {
       lastMessageLengthRef.current = messages.length;
@@ -65,40 +57,22 @@ export default function QuestionAnswerChat() {
     await handleSubmit(e);
   };
 
-  const ProcessingCard = () => (
-    <div className="bg-white rounded-lg p-4 shadow-md border border-gray-100 mb-4 animate-fade-in">
-      <div className="space-y-2">
-        <div className="flex items-center space-x-3">
-          <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-full">
-            <Search className="w-4 h-4 text-blue-600 animate-pulse" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-800">Analyzing Query</p>
-            <p className="text-xs text-gray-500">Processing your question...</p>
-          </div>
-        </div>
-        <div className="flex items-center space-x-3">
-          <div className="flex items-center justify-center w-8 h-8 bg-purple-100 rounded-full">
-            <Brain className="w-4 h-4 text-purple-600 animate-pulse" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-800">Searching Knowledge Base</p>
-            <p className="text-xs text-gray-500">Finding relevant information...</p>
-          </div>
-        </div>
-        <div className="flex items-center space-x-3">
-          <div className="flex items-center justify-center w-8 h-8 bg-green-100 rounded-full">
-            <Cpu className="w-4 h-4 text-green-600 animate-pulse" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-800">Generating Response</p>
-            <p className="text-xs text-gray-500">Crafting your answer...</p>
-          </div>
-        </div>
-        <div className="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden">
-          <div className="h-full bg-blue-500 rounded-full animate-progress"></div>
-        </div>
+  const LoadingSkeleton = () => (
+    <div className="animate-pulse">
+      <div className="h-6 bg-gray-200 rounded-md w-3/4 mb-4"></div>
+      <div className="h-4 bg-gray-200 rounded-md w-full mb-2"></div>
+      <div className="h-4 bg-gray-200 rounded-md w-5/6 mb-2"></div>
+      <div className="h-4 bg-gray-200 rounded-md w-4/6 mb-6"></div>
+      
+      <div className="flex space-x-4 mb-6">
+        <div className="h-20 bg-gray-200 rounded-md w-1/3"></div>
+        <div className="h-20 bg-gray-200 rounded-md w-1/3"></div>
+        <div className="h-20 bg-gray-200 rounded-md w-1/3"></div>
       </div>
+      
+      <div className="h-4 bg-gray-200 rounded-md w-full mb-2"></div>
+      <div className="h-4 bg-gray-200 rounded-md w-5/6 mb-2"></div>
+      <div className="h-4 bg-gray-200 rounded-md w-4/6"></div>
     </div>
   );
 
@@ -113,6 +87,36 @@ export default function QuestionAnswerChat() {
       >
         {children}
       </a>
+    ),
+    ul: ({ node, children }) => (
+      <ul className="list-disc pl-6 mb-4">
+        {children}
+      </ul>
+    ),
+    ol: ({ node, children }) => (
+      <ol className="list-decimal pl-6 mb-4">
+        {children}
+      </ol>
+    ),
+    li: ({ node, children }) => (
+      <li className="mb-1">
+        {children}
+      </li>
+    ),
+    h1: ({ node, children }) => (
+      <h1 className="text-xl font-bold mb-2 mt-4">
+        {children}
+      </h1>
+    ),
+    h2: ({ node, children }) => (
+      <h2 className="text-lg font-bold mb-2 mt-3">
+        {children}
+      </h2>
+    ),
+    h3: ({ node, children }) => (
+      <h3 className="text-md font-bold mb-2 mt-3">
+        {children}
+      </h3>
     )
   };
 
@@ -144,59 +148,121 @@ export default function QuestionAnswerChat() {
     return processed.join('\n\n');
   };
 
+  const MessageActions = () => (
+    <div className="flex space-x-2 mt-2">
+      <button className="p-1 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100">
+        <Clipboard size={16} />
+      </button>
+      <button className="p-1 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100">
+        <ExternalLink size={16} />
+      </button>
+    </div>
+  );
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 py-8">
-      <div className="max-w-3xl mx-auto p-4 bg-white rounded-2xl shadow-lg">
-        <div className="border-b pb-4 mb-4">
-          <h1 className="text-2xl font-bold text-gray-800">AI Chat Assistant</h1>
-          <p className="text-gray-500">Ask me anything about woodworking!</p>
+    <div className="flex h-screen bg-white">
+      {/* Sidebar */}
+      <Sidebar activeTab="chat" />
+      
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col h-full overflow-hidden">
+        {/* Chat Content */}
+        <div 
+          ref={messageContainerRef} 
+          className="flex-1 overflow-y-auto p-6"
+        >
+          {messages.length === 0 ? (
+            <ChatWelcome />
+          ) : (
+            <div className="space-y-6">
+              {messages.map((message, index) => (
+                <div key={index} className="max-w-3xl mx-auto">
+                  {message.role === 'user' ? (
+                    <div className="flex items-start mb-4">
+                      <div className="flex-shrink-0 mr-4">
+                        <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                          S
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-gray-800 whitespace-pre-wrap">{message.content}</p>
+                        <div className="flex space-x-2 mt-1">
+                          <button className="text-gray-400 hover:text-gray-600">
+                            <Clipboard size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-start mb-4">
+                      <div className="flex-shrink-0 mr-4">
+                        <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                          <img 
+                            src="/bents-logo.jpg" 
+                            alt="Bent's Assistant" 
+                            className="w-6 h-6 rounded-full"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <div className="prose prose-sm max-w-none">
+                          <ReactMarkdown components={markdownComponents}>
+                            {processMarkdown(message.content)}
+                          </ReactMarkdown>
+                        </div>
+                        <MessageActions />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+              {showProcessing && !isStreaming && <LoadingSkeleton />}
+              <div ref={messagesEndRef} className="h-1" />
+            </div>
+          )}
         </div>
-        <div ref={messageContainerRef} className="space-y-4 mb-4 max-h-[500px] overflow-y-auto scroll-smooth px-2">
-          {messages.map((message, index) => (
-            <div key={index} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`}>
-              <div className={`relative p-3 rounded-2xl max-w-[80%] shadow-sm ${message.role === 'user' ? 'bg-blue-500 text-white ml-12' : 'bg-gray-100 text-gray-800 mr-12'} transform transition-all duration-300 hover:scale-[1.02]`}>
-                <div className={`absolute top-0 ${message.role === 'user' ? '-right-10' : '-left-10'} w-8 h-8 rounded-full flex items-center justify-center ${message.role === 'user' ? 'bg-blue-600' : 'bg-gray-200'}`}>
-                  {message.role === 'user' ? 'Y' : 'A'}
-                </div>
-                <div className="text-sm whitespace-pre-wrap markdown-content">
-                  <ReactMarkdown components={markdownComponents}>
-                    {processMarkdown(message.content)}
-                  </ReactMarkdown>
-                </div>
-                <div className={`absolute bottom-0 ${message.role === 'user' ? '-right-2' : '-left-2'} w-4 h-4 transform rotate-45 ${message.role === 'user' ? 'bg-blue-500' : 'bg-gray-100'}`} />
+        
+        {/* Chat Input */}
+        <div className="border-t border-gray-200 p-4">
+          <form onSubmit={onSubmit} className="max-w-3xl mx-auto">
+            <div className="relative">
+              <input
+                type="text"
+                value={input}
+                onChange={handleInputChange}
+                placeholder="What do you want to know?"
+                className="w-full px-4 py-3 pr-24 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+                disabled={isLoading}
+              />
+              <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center space-x-1">
+                <button
+                  type="button"
+                  className="p-2 text-gray-400 hover:text-gray-600"
+                >
+                  <MicIcon size={18} />
+                </button>
+                <button
+                  type="button"
+                  className="p-2 text-gray-400 hover:text-gray-600"
+                >
+                  <Search size={18} />
+                </button>
+                <button
+                  type="submit"
+                  disabled={isLoading || !input.trim()}
+                  className="p-2 text-blue-500 hover:text-blue-700"
+                >
+                  {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+                </button>
               </div>
             </div>
-          ))}
-          {showProcessing && !isStreaming && <ProcessingCard />}
-          <div ref={messagesEndRef} className="h-1" />
-        </div>
-        <form onSubmit={onSubmit} className="relative">
-          <input
-            type="text"
-            value={input}
-            onChange={handleInputChange}
-            placeholder="Type your message here..."
-            className="w-full px-6 py-3 bg-gray-50 rounded-full pr-16 border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all duration-300 placeholder:text-gray-400"
-            disabled={isLoading}
-          />
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="absolute right-2 top-1/2 transform -translate-y-1/2 px-4 py-2 rounded-full bg-blue-500 text-white hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:bg-gray-300 transition-all duration-300 ease-in-out hover:shadow-lg disabled:hover:shadow-none"
-          >
-            {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-          </button>
-        </form>
-        {isLoading && (
-          <div className="flex items-center space-x-2 mt-2 text-gray-400 text-sm">
-            <div className="flex space-x-1">
-              <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '0ms' }} />
-              <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '150ms' }} />
-              <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '300ms' }} />
-            </div>
-            <span>AI is typing...</span>
+          </form>
+          
+          {/* Terms and Privacy */}
+          <div className="max-w-3xl mx-auto mt-2 text-xs text-gray-500 text-center">
+            By messaging, you agree to our <a href="#" className="text-gray-600 hover:underline">Terms</a> and <a href="#" className="text-gray-600 hover:underline">Privacy Policy</a>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
