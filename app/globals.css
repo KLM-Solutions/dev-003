@@ -148,11 +148,11 @@ body {
 }
 
 .prose ul {
-  @apply list-disc list-inside;
+  @apply list-disc pl-6;
 }
 
 .prose ol {
-  @apply list-decimal list-inside;
+  @apply list-decimal pl-6;
 }
 
 .prose p {
