@@ -198,11 +198,11 @@ export default function QuestionAnswerChat() {
                   ) : (
                     <div className="flex items-start mb-4">
                       <div className="flex-shrink-0 mr-4">
-                        <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden">
+                        <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden">
                           <img 
                             src="/bents-image.jpg" 
                             alt="Bent's Woodworking Assistant" 
-                            className="w-12 h-12 object-cover"
+                            className="w-8 h-8 object-cover"
                           />
                         </div>
                       </div>
