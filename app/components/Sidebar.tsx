@@ -3,7 +3,10 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { MessageCircle, ShoppingBag, Clock as ClockIcon, Settings as SettingsIcon, HelpCircle as HelpCircleIcon } from 'lucide-react';
+import { MessageCircle, ShoppingBag } from 'lucide-react';
+import ClockIcon from './icons/ClockIcon';
+import SettingsIcon from './icons/SettingsIcon';
+import HelpCircleIcon from './icons/HelpCircleIcon';
 
 interface SidebarProps {
   activeTab?: string;

@@ -2,7 +2,9 @@
 
 import React, { useEffect, useRef, useState, FormEvent } from 'react';
 import { useChat } from '@ai-sdk/react';
-import { Send, Loader2, Mic as MicIcon, Search, ExternalLink, Clipboard } from 'lucide-react';
+import { Send, Loader2, Search, ExternalLink } from 'lucide-react';
+import MicIcon from '../components/icons/MicIcon';
+import ClipboardIcon from '../components/icons/ClipboardIcon';
 import ReactMarkdown, { Components } from 'react-markdown';
 import Sidebar from '../components/Sidebar';
 import ChatWelcome from '../components/ChatWelcome';
@@ -151,7 +153,7 @@ export default function QuestionAnswerChat() {
   const MessageActions = () => (
     <div className="flex space-x-2 mt-2">
       <button className="p-1 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100">
-        <Clipboard size={16} />
+        <ClipboardIcon size={16} />
       </button>
       <button className="p-1 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100">
         <ExternalLink size={16} />
@@ -188,7 +190,7 @@ export default function QuestionAnswerChat() {
                         <p className="text-gray-800 whitespace-pre-wrap">{message.content}</p>
                         <div className="flex space-x-2 mt-1">
                           <button className="text-gray-400 hover:text-gray-600">
-                            <Clipboard size={14} />
+                            <ClipboardIcon size={14} />
                           </button>
                         </div>
                       </div>
