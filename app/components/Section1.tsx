@@ -49,9 +49,6 @@ const Section1 = () => {
                 <Link href="/chat" className={primaryButtonClasses}>
                   Talk to AI Chat
                 </Link>
-                <Link href="/shop" className={secondaryButtonClasses}>
-                  Shop Now
-                </Link>
               </div>
             </div>
             <div className="md:w-1/2 flex justify-center">
