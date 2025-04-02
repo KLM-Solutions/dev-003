@@ -1,18 +1,25 @@
 'use client';
 
 import React, { useEffect, useRef, useState, FormEvent } from 'react';
-import { useChat } from '@ai-sdk/react';
 import { Send, Loader2, Search, ExternalLink } from 'lucide-react';
-import MicIcon from '../components/icons/MicIcon';
-import ClipboardIcon from '../components/icons/ClipboardIcon';
+import MicIcon from '@/app/components/icons/MicIcon';
+import ClipboardIcon from '@/app/components/icons/ClipboardIcon';
 import ReactMarkdown, { Components } from 'react-markdown';
-import Sidebar from '../components/Sidebar';
-import ChatWelcome from '../components/ChatWelcome';
+import Sidebar from '@/app/components/Sidebar';
+import ChatWelcome from '@/app/components/ChatWelcome';
+
+interface Message {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  createdAt: Date;
+}
 
 export default function QuestionAnswerChat() {
-  const { messages, handleSubmit, input, handleInputChange, isLoading } = useChat({
-    api: '/api/chat',
-  });
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
   
   const [showProcessing, setShowProcessing] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -52,11 +59,59 @@ export default function QuestionAnswerChat() {
     }
   }, [messages.length]);
 
-  const onSubmit = async (e: FormEvent) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInput(e.target.value);
+  };
+
+  const onSubmit = (e: FormEvent) => {
     e.preventDefault();
+    if (!input.trim()) return;
+    
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: input,
+      createdAt: new Date()
+    };
+    
+    setMessages(prev => [...prev, userMessage]);
+    setInput('');
+    setIsLoading(true);
     setShowProcessing(true);
     setIsStreaming(false);
-    await handleSubmit(e);
+    
+    setTimeout(() => {
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: `### 1. **Woodworking Joints**
+
+- There are several effective ways to join two pieces of wood, with the best method depending on your specific project requirements, the type of wood, and the desired strength and appearance of the joint. Common joinery methods include butt joints with screws or nails for simple projects, dowel joints for alignment and strength, and mortise and tenon joints for traditional furniture making.
+        
+- For beginners, pocket hole joinery is highly recommended as it creates strong joints with minimal specialized tools. This technique involves drilling angled holes into one piece of wood and then joining it to another piece with screws, creating a clean appearance from the visible side.
+
+- More advanced woodworkers often prefer dovetail joints for drawers and boxes due to their exceptional strength and distinctive appearance. These joints interlock the wood pieces and rely primarily on the mechanical connection rather than glue for strength.
+
+### 2. **Factors to Consider When Choosing a Joint**
+
+- The intended use of your project should guide your joint selection. For items that will bear weight or experience stress, stronger joints like mortise and tenon or dovetails are preferable, while decorative pieces might use simpler joints like miters with splines.
+
+- Consider the tools you have available and your skill level. Some joints require specialized equipment and practice to execute properly, while others can be made with basic tools and are more forgiving for beginners.
+
+- The wood species also matters when selecting a joint. Hardwoods generally hold fasteners better and create stronger glue bonds than softwoods, which might influence your joinery choice for different materials.
+
+### **Related Products**
+
+- [Kreg Pocket Hole Jig 720PRO](https://www.kregtool.com/shop/pocket-hole-joinery/pocket-hole-jigs/720pro-pocket-hole-jig/KPHJ720PRO.html)
+- [WoodRiver Dovetail Jig](https://www.woodcraft.com/products/woodriver-dovetail-jig)
+- [Titebond III Ultimate Wood Glue](https://www.titebond.com/product/wood-glues/4c0ca5e5-ecfb-4a2e-a5d1-cf8a9d18488d)
+- [DEWALT 20V MAX XR Drill/Driver Kit](https://www.dewalt.com/product/dcd791d2/20v-max-xr-brushless-compact-drilldriver-kit)`,
+        createdAt: new Date()
+      };
+      
+      setMessages(prev => [...prev, assistantMessage]);
+      setIsLoading(false);
+    }, 2000);
   };
 
   const LoadingSkeleton = () => (
