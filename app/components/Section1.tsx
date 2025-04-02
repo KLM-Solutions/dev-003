@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { MessageSquare, Tool, LayoutDashboard } from 'lucide-react';
+import { MessageSquare, Search, LayoutDashboard } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type FeatureCardProps = {
@@ -79,7 +79,7 @@ const Section1 = () => {
               description="Get expert answers to your woodworking questions that are AI-accurate."
             />
             <FeatureCard 
-              icon={<Tool size={32} />}
+              icon={<Search size={32} />}
               title="Tool Recommendations"
               description="Discover the best tools for your projects with personalized suggestions."
             />
