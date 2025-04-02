@@ -6,11 +6,12 @@ const ChatWelcome = () => {
     <div className="flex flex-col items-center justify-center h-full text-center px-4">
       <div className="mb-6">
         <Image 
-          src="/woodworking-illustration.png" 
-          alt="Woodworking Illustration" 
+          src="/woodworking-animation.gif" 
+          alt="Woodworking Animation" 
           width={300} 
           height={300}
           className="max-w-full h-auto"
+          priority
         />
       </div>
       <h1 className="text-2xl font-semibold mb-2">
