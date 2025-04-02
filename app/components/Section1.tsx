@@ -43,7 +43,7 @@ const Section1 = () => {
                 <span className="text-blue-500">Woodworking</span> Assistant
               </h1>
               <p className="text-gray-600 mb-8 max-w-lg">
-                Your AI-powered companion for all things woodworking. Get expert advice, tool recommendations, and shop improvement tips.
+                Your AI-powered companion for all things woodworking. Get expert advice, tool recommendations, and workspace organization tips.
               </p>
               <div className="flex flex-wrap gap-4">
                 <Link href="/chat" className={primaryButtonClasses}>
@@ -82,7 +82,7 @@ const Section1 = () => {
             />
             <FeatureCard 
               icon={<LayoutDashboard size={32} />}
-              title="Shop Improvement"
+              title="Workspace Organization"
               description="Learn how to optimize your workspace for better efficiency and safety."
             />
           </div>
@@ -101,7 +101,7 @@ const Section1 = () => {
                 Bent's Woodworking Assistant is an AI-powered tool designed to help woodworkers of all skill levels. Whether you're a beginner looking for guidance or an experienced craftsman seeking to optimize your workflow, our assistant is here to help.
               </p>
               <p className="text-gray-600">
-                With a vast knowledge base covering techniques, tools, and shop management, we're your go-to resource for all things woodworking.
+                With a vast knowledge base covering techniques, tools, and workspace organization, we're your go-to resource for all things woodworking.
               </p>
             </div>
             <div className="md:w-1/2">
