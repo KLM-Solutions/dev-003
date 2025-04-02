@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useEffect, useRef, useState, FormEvent } from 'react';
+import React, { useState } from 'react';
 import { Send, Loader2, Search, ExternalLink } from 'lucide-react';
 import MicIcon from '@/app/components/icons/MicIcon';
 import ClipboardIcon from '@/app/components/icons/ClipboardIcon';
-import ReactMarkdown, { Components } from 'react-markdown';
+import ReactMarkdown from 'react-markdown';
 import Sidebar from '@/app/components/Sidebar';
 import ChatWelcome from '@/app/components/ChatWelcome';
 
@@ -15,56 +15,16 @@ interface Message {
   createdAt: Date;
 }
 
-export default function QuestionAnswerChat() {
+export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-  
-  const [showProcessing, setShowProcessing] = useState(false);
-  const [isStreaming, setIsStreaming] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const messageContainerRef = useRef<HTMLDivElement>(null);
-  const lastMessageLengthRef = useRef<number>(0);
-  const lastMessageContentRef = useRef<string>('');
-
-  useEffect(() => {
-    const lastMessage = messages[messages.length - 1];
-    if (lastMessage?.role === 'assistant') {
-      const currentContent = lastMessage.content;
-      if (currentContent !== lastMessageContentRef.current) {
-        lastMessageContentRef.current = currentContent;
-        if (!isStreaming) {
-          setIsStreaming(true);
-          setShowProcessing(false);
-        }
-      }
-    }
-  }, [messages]);
-
-  useEffect(() => {
-    if (isLoading) {
-      setShowProcessing(true);
-      setIsStreaming(false);
-    } else {
-      setShowProcessing(false);
-      setIsStreaming(false);
-    }
-  }, [isLoading]);
-
-  useEffect(() => {
-    if (messages.length && messages.length !== lastMessageLengthRef.current) {
-      lastMessageLengthRef.current = messages.length;
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages.length]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInput(e.target.value);
   };
 
-  const onSubmit = (e: FormEvent) => {
-    e.preventDefault();
+  const handleSendMessage = () => {
     if (!input.trim()) return;
     
     const userMessage: Message = {
@@ -77,8 +37,6 @@ export default function QuestionAnswerChat() {
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
-    setShowProcessing(true);
-    setIsStreaming(false);
     
     setTimeout(() => {
       const assistantMessage: Message = {
@@ -114,107 +72,10 @@ export default function QuestionAnswerChat() {
     }, 2000);
   };
 
-  const LoadingSkeleton = () => (
-    <div className="animate-pulse">
-      <div className="h-6 bg-gray-200 rounded-md w-3/4 mb-4"></div>
-      <div className="h-4 bg-gray-200 rounded-md w-full mb-2"></div>
-      <div className="h-4 bg-gray-200 rounded-md w-5/6 mb-2"></div>
-      <div className="h-4 bg-gray-200 rounded-md w-4/6 mb-6"></div>
-      
-      <div className="flex space-x-4 mb-6">
-        <div className="h-20 bg-gray-200 rounded-md w-1/3"></div>
-        <div className="h-20 bg-gray-200 rounded-md w-1/3"></div>
-        <div className="h-20 bg-gray-200 rounded-md w-1/3"></div>
-      </div>
-      
-      <div className="h-4 bg-gray-200 rounded-md w-full mb-2"></div>
-      <div className="h-4 bg-gray-200 rounded-md w-5/6 mb-2"></div>
-      <div className="h-4 bg-gray-200 rounded-md w-4/6"></div>
-    </div>
-  );
-
-  // Add custom components configuration
-  const markdownComponents: Components = {
-    a: ({ node, children, href }) => (
-      <a
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-blue-600 hover:text-blue-800 underline"
-      >
-        {children}
-      </a>
-    ),
-    ul: ({ node, children }) => (
-      <ul className="list-disc pl-6 mb-4">
-        {children}
-      </ul>
-    ),
-    ol: ({ node, children }) => (
-      <ol className="list-decimal pl-6 mb-4">
-        {children}
-      </ol>
-    ),
-    li: ({ node, children }) => (
-      <li className="mb-1">
-        {children}
-      </li>
-    ),
-    h1: ({ node, children }) => (
-      <h1 className="text-xl font-bold mb-2 mt-4">
-        {children}
-      </h1>
-    ),
-    h2: ({ node, children }) => (
-      <h2 className="text-lg font-bold mb-2 mt-3">
-        {children}
-      </h2>
-    ),
-    h3: ({ node, children }) => (
-      <h3 className="text-md font-bold mb-2 mt-3">
-        {children}
-      </h3>
-    )
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleSendMessage();
   };
-
-  // Update the processMarkdown function
-  const processMarkdown = (content: string) => {
-    // First, normalize line endings
-    const normalized = content.replace(/\r\n/g, '\n');
-    
-    // Split into paragraphs (double line breaks)
-    const paragraphs = normalized.split(/\n\s*\n/);
-    
-    // Process each paragraph while preserving markdown links
-    const processed = paragraphs.map(para => {
-      // Temporarily replace markdown links with a placeholder
-      const links: string[] = [];
-      const withPlaceholders = para.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match) => {
-        links.push(match);
-        return `{{LINK${links.length - 1}}}`;
-      });
-      
-      // Remove extra spaces
-      const cleaned = withPlaceholders.replace(/\s+/g, ' ').trim();
-      
-      // Restore links
-      return cleaned.replace(/{{LINK(\d+)}}/g, (_, index) => links[parseInt(index)]);
-    });
-    
-    // Join paragraphs with double line break
-    return processed.join('\n\n');
-  };
-
-  const MessageActions = () => (
-    <div className="flex space-x-2 mt-2">
-      <button className="p-1 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100">
-        <ClipboardIcon size={16} />
-      </button>
-      <button className="p-1 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100">
-        <ExternalLink size={16} />
-      </button>
-    </div>
-  );
 
   return (
     <div className="flex h-screen bg-white">
@@ -224,10 +85,7 @@ export default function QuestionAnswerChat() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Chat Content */}
-        <div 
-          ref={messageContainerRef} 
-          className="flex-1 overflow-y-auto p-6"
-        >
+        <div className="flex-1 overflow-y-auto p-6">
           {messages.length === 0 ? (
             <ChatWelcome />
           ) : (
@@ -263,25 +121,38 @@ export default function QuestionAnswerChat() {
                       </div>
                       <div className="flex-1">
                         <div className="prose prose-sm max-w-none">
-                          <ReactMarkdown components={markdownComponents}>
-                            {processMarkdown(message.content)}
+                          <ReactMarkdown>
+                            {message.content}
                           </ReactMarkdown>
                         </div>
-                        <MessageActions />
+                        <div className="flex space-x-2 mt-2">
+                          <button className="p-1 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100">
+                            <ClipboardIcon size={16} />
+                          </button>
+                          <button className="p-1 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100">
+                            <ExternalLink size={16} />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   )}
                 </div>
               ))}
-              {showProcessing && !isStreaming && <LoadingSkeleton />}
-              <div ref={messagesEndRef} className="h-1" />
+              {isLoading && (
+                <div className="animate-pulse max-w-3xl mx-auto">
+                  <div className="h-6 bg-gray-200 rounded-md w-3/4 mb-4"></div>
+                  <div className="h-4 bg-gray-200 rounded-md w-full mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded-md w-5/6 mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded-md w-4/6 mb-6"></div>
+                </div>
+              )}
             </div>
           )}
         </div>
         
         {/* Chat Input */}
         <div className="border-t border-gray-200 p-4">
-          <form onSubmit={onSubmit} className="max-w-3xl mx-auto">
+          <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
             <div className="relative">
               <input
                 type="text"
@@ -305,9 +176,10 @@ export default function QuestionAnswerChat() {
                   <Search size={18} />
                 </button>
                 <button
-                  type="submit"
-                  disabled={isLoading || !input.trim()}
+                  type="button"
+                  disabled={isLoading}
                   className="p-2 text-blue-500 hover:text-blue-700"
+                  onClick={handleSendMessage}
                 >
                   {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
                 </button>
