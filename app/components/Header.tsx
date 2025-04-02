@@ -31,7 +31,7 @@ const Header = () => {
 
           <nav className="hidden md:flex items-center space-x-8">
             <Link 
-              href="/" 
+              href="/#home" 
               className={cn(
                 navLinkClasses,
                 pathname === '/' && activeNavLinkClasses
@@ -40,7 +40,7 @@ const Header = () => {
               HOME
             </Link>
             <Link 
-              href="/about" 
+              href="/#about" 
               className={cn(
                 navLinkClasses,
                 pathname === '/about' && activeNavLinkClasses
@@ -49,7 +49,7 @@ const Header = () => {
               ABOUT
             </Link>
             <Link 
-              href="/contact" 
+              href="/#contact" 
               className={cn(
                 navLinkClasses,
                 pathname === '/contact' && activeNavLinkClasses
